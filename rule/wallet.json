@@ -1,0 +1,11 @@
+{
+  "rules": [
+    {
+      "domain_suffix": [
+        "ifastgb.com",
+        "wise.com"
+      ]
+    }
+  ],
+  "version": 1
+}

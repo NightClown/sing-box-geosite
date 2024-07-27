@@ -45,9 +45,19 @@ def read_list_from_url(url):
                                 MAP_DICT[keyword]: value
                             })
             rules.append(rule)
-    for index, row in df.iterrows():
-        if 'AND' not in row['pattern']:
-            filtered_rows.append(row)
+    # for index, row in df.iterrows():
+    #     if 'AND' not in row['pattern']:
+    #         row['pattern'].strip()
+    #         row['address'].strip()
+    #         filtered_rows.append(row)
+    filtered_df = df[~df['pattern'].str.contains('AND')]
+
+    # Stripping whitespace from 'pattern' and 'address' columns
+    filtered_df['pattern'] = filtered_df['pattern'].str.strip()
+    filtered_df['address'] = filtered_df['address'].str.strip()
+
+    # If you need the result as a list of rows, you can use .to_dict(orient='records')
+    filtered_rows = filtered_df.to_dict(orient='records')
     df_filtered = pd.DataFrame(filtered_rows, columns=['pattern', 'address', 'other', 'other2', 'other3'])
     return df_filtered, rules
 
@@ -162,12 +172,12 @@ def parse_list_file(link, output_directory):
         pass
 
 # 读取 links.txt 中的每个链接并生成对应的 JSON 文件
-with open("../links.txt", 'r') as links_file:
+with open("links.txt", 'r') as links_file:
     links = links_file.read().splitlines()
 
 links = [l for l in links if l.strip() and not l.strip().startswith("#")]
 
-output_dir = "./"
+output_dir = "./rule"
 result_file_names = []
 
 for link in links:
