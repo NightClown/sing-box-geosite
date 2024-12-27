@@ -2,6 +2,7 @@
   "rules": [
     {
       "domain_keyword": [
+        "linkedin",
         "paypal"
       ]
     },
@@ -47,6 +48,7 @@
         "gmoney.org",
         "i-o-u.info",
         "krakenjs.com",
+        "linkedin.com",
         "loanbuilder.com",
         "login-paypal.com",
         "login-paypal.info",
