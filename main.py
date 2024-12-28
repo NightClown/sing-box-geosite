@@ -171,8 +171,25 @@ def parse_list_file(link, output_directory):
         print(f'获取链接出错，已跳过：{link}')
         pass
 
+def generate_srs_by_json():
+    # 获取rule目录下所有的json文件
+    json_files = [f for f in os.listdir("./rule") if f.endswith('.json')]
+    
+    for json_file in json_files:
+        json_path = os.path.join("./rule", json_file)
+        srs_path = json_path.replace(".json", ".srs")
+        
+        # 检查对应的.srs文件是否存在
+        if not os.path.exists(srs_path):
+            try:
+                # 使用sing-box命令生成.srs文件
+                os.system(f"sing-box rule-set compile --output {srs_path} {json_path}")
+                print(f"Generated {srs_path}")
+            except Exception as e:
+                print(f"Error generating {srs_path}: {str(e)}")
+
 # 读取 links.txt 中的每个链接并生成对应的 JSON 文件
-with open("links.txt", 'r') as links_file:
+with open(os.path.basename("links.txt"), 'r') as links_file:
     links = links_file.read().splitlines()
 
 links = [l for l in links if l.strip() and not l.strip().startswith("#")]
@@ -182,8 +199,10 @@ result_file_names = []
 
 for link in links:
     result_file_name = parse_list_file(link, output_directory=output_dir)
-    result_file_names.append(result_file_name)
+    # result_file_names.append(result_file_name)
 
+# 根据json文件生成srs文件
+generate_srs_by_json()
 # 打印生成的文件名
 # for file_name in result_file_names:
     # print(file_name)
