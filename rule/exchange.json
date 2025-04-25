@@ -1,0 +1,26 @@
+{
+    "rules": [
+      {
+        "domain_keyword": [
+          "mexc",
+          "binance",
+          "bitget",
+          "okx",
+          "bybit",
+          "kraken"
+        ]
+      },
+      {
+        "domain_suffix": [
+          "mexc.com",
+          "binance.com",
+          "bitget.com",
+          "okx.com",
+          "gate.io",
+          "bybit.com",
+          "kraken.com"
+        ]
+      }
+    ],
+    "version": 1
+  }
