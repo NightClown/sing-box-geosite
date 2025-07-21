@@ -7,7 +7,8 @@
           "bitget",
           "okx",
           "bybit",
-          "kraken"
+          "kraken",
+          "hyperliquid"
         ]
       },
       {
@@ -16,9 +17,10 @@
           "binance.com",
           "bitget.com",
           "okx.com",
-          "gate.io",
+          "gate.com",
           "bybit.com",
-          "kraken.com"
+          "kraken.com",
+          "hyperliquid.xyz"
         ]
       }
     ],
