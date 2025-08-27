@@ -8,13 +8,15 @@
           "okx",
           "bybit",
           "kraken",
-          "hyperliquid"
+          "hyperliquid",
+          "bnbstatic"
         ]
       },
       {
         "domain_suffix": [
           "mexc.com",
           "binance.com",
+          "bnbstatic.com",
           "bitget.com",
           "okx.com",
           "gate.com",
