@@ -100,7 +100,7 @@ def parse_and_convert_to_dataframe(link):
                             pattern = 'DOMAIN'
                 else:
                     pattern, address = item.split(',', 1)
-                if pattern == "IP-CIDR" and "no-resolve" in address:
+                if pattern in ("IP-CIDR", "IP-CIDR6", "IP6-CIDR") and "no-resolve" in address:
                     address = address.split(',', 1)[0]
                 rows.append({'pattern': pattern.strip(), 'address': address.strip(), 'other': None})
             df = pd.DataFrame(rows, columns=['pattern', 'address', 'other'])
@@ -188,6 +188,150 @@ def generate_srs_by_json():
             except Exception as e:
                 print(f"Error generating {srs_path}: {str(e)}")
 
+
+def parse_ruleset_line(line):
+    """解析 ruleset= 格式的行，返回 (group_name, clash_type, url, no_resolve)"""
+    # 格式: ruleset=🔍 Google,clash-classic:https://...
+    # 或:   ruleset=🔍 Google,clash-ipcidr:https://...,no-resolve
+    line = line.strip()
+    if not line.startswith("ruleset="):
+        return None
+    content = line[len("ruleset="):]
+    # 提取组名（emoji + 名称部分）
+    # 格式: 🔍 Google,clash-type:url
+    parts = content.split(",", 1)
+    if len(parts) < 2:
+        return None
+    group_tag = parts[0].strip()  # e.g. "🔍 Google"
+    rest = parts[1].strip()       # e.g. "clash-classic:https://...,no-resolve"
+
+    # 提取 clash type 和 URL
+    type_url = rest.split(":", 1)
+    if len(type_url) < 2:
+        return None
+    clash_type = type_url[0].strip()  # e.g. "clash-classic"
+    url_part = type_url[1].strip()    # e.g. "https://..."
+
+    # 处理 URL（可能包含 ,no-resolve 后缀）
+    no_resolve = False
+    if url_part.endswith(",no-resolve"):
+        no_resolve = True
+        url_part = url_part[:-len(",no-resolve")]
+
+    # 从组名中提取简短名称（去掉 emoji 前缀）
+    # e.g. "🔍 Google" -> "Google", "🌟 Gemini" -> "Gemini"
+    name_parts = group_tag.split(" ", 1)
+    group_name = name_parts[-1].strip() if len(name_parts) > 1 else group_tag
+
+    return (group_name, clash_type, url_part, no_resolve)
+
+
+def parse_ruleset_group(group_name, entries, output_directory):
+    """将多个 ruleset 条目合并为一个 JSON/SRS 文件
+    entries: list of (clash_type, url, no_resolve)
+    """
+    try:
+        all_domains = []
+        all_domain_suffixes = []
+        all_domain_keywords = []
+        all_ip_cidrs = []
+        all_domain_regexes = []
+        all_other_rules = {}  # key -> list of values
+
+        for clash_type, url, no_resolve in entries:
+            print(f"  Fetching: {url}")
+            try:
+                if clash_type in ("clash-domain", "clash-ipcidr"):
+                    # YAML payload 格式
+                    yaml_data = read_yaml_from_url(url)
+                    if isinstance(yaml_data, dict):
+                        items = yaml_data.get('payload', [])
+                    else:
+                        items = []
+
+                    for item in items:
+                        address = str(item).strip().strip("'")
+                        if clash_type == "clash-ipcidr":
+                            all_ip_cidrs.append(address)
+                        elif clash_type == "clash-domain":
+                            if address.startswith('+.') or address.startswith('.'):
+                                suffix = address.lstrip('+').lstrip('.')
+                                all_domain_suffixes.append(suffix)
+                            else:
+                                all_domains.append(address)
+
+                elif clash_type == "clash-classic":
+                    # 经典 Clash 规则格式（可能是 YAML 或 list）
+                    df, rules = parse_and_convert_to_dataframe(url)
+                    # 过滤无效行
+                    df = df[~df['pattern'].str.contains('#', na=False)].reset_index(drop=True)
+                    df = df[df['pattern'].isin(MAP_DICT.keys())].reset_index(drop=True)
+                    df['pattern'] = df['pattern'].replace(MAP_DICT)
+
+                    for _, row in df.iterrows():
+                        pattern = row['pattern']
+                        address = str(row['address']).strip()
+                        if pattern == 'domain':
+                            all_domains.append(address)
+                        elif pattern == 'domain_suffix':
+                            all_domain_suffixes.append(address)
+                        elif pattern == 'domain_keyword':
+                            all_domain_keywords.append(address)
+                        elif pattern == 'ip_cidr':
+                            all_ip_cidrs.append(address)
+                        elif pattern == 'domain_regex':
+                            all_domain_regexes.append(address)
+                        else:
+                            if pattern not in all_other_rules:
+                                all_other_rules[pattern] = []
+                            all_other_rules[pattern].append(address)
+
+            except Exception as e:
+                print(f"  获取链接出错，已跳过：{url} ({e})")
+                continue
+
+        # 去重
+        all_domains = sorted(set(all_domains))
+        all_domain_suffixes = sorted(set(all_domain_suffixes))
+        all_domain_keywords = sorted(set(all_domain_keywords))
+        all_ip_cidrs = sorted(set(all_ip_cidrs))
+        all_domain_regexes = sorted(set(all_domain_regexes))
+        for key in all_other_rules:
+            all_other_rules[key] = sorted(set(all_other_rules[key]))
+
+        # 构建 sing-box rule-set JSON
+        result_rules = {"version": 1, "rules": []}
+        if all_domains:
+            result_rules["rules"].append({"domain": all_domains})
+        if all_domain_suffixes:
+            result_rules["rules"].append({"domain_suffix": all_domain_suffixes})
+        if all_domain_keywords:
+            result_rules["rules"].append({"domain_keyword": all_domain_keywords})
+        if all_ip_cidrs:
+            result_rules["rules"].append({"ip_cidr": all_ip_cidrs})
+        if all_domain_regexes:
+            result_rules["rules"].append({"domain_regex": all_domain_regexes})
+        for key, values in sorted(all_other_rules.items()):
+            result_rules["rules"].append({key: values})
+
+        # 写入 JSON
+        os.makedirs(output_directory, exist_ok=True)
+        file_name = os.path.join(output_directory, f"{group_name}.json")
+        with open(file_name, 'w', encoding='utf-8') as output_file:
+            result_rules_str = json.dumps(sort_dict(result_rules), ensure_ascii=False, indent=2)
+            result_rules_str = result_rules_str.replace('\\\\', '\\')
+            output_file.write(result_rules_str)
+
+        # 编译为 .srs
+        srs_path = file_name.replace(".json", ".srs")
+        os.system(f"sing-box rule-set compile --output {srs_path} {file_name}")
+        print(f"Generated {file_name} and {srs_path}")
+        return file_name
+    except Exception as e:
+        print(f"处理规则组 {group_name} 出错：{e}")
+        return None
+
+
 # 读取 links.txt 中的每个链接并生成对应的 JSON 文件
 with open(os.path.basename("links.txt"), 'r') as links_file:
     links = links_file.read().splitlines()
@@ -197,12 +341,28 @@ links = [l for l in links if l.strip() and not l.strip().startswith("#")]
 output_dir = "./rule"
 result_file_names = []
 
-for link in links:
+# 分离普通链接和 ruleset= 格式的行
+regular_links = []
+ruleset_groups = {}  # group_name -> list of (clash_type, url, no_resolve)
+
+for line in links:
+    parsed = parse_ruleset_line(line)
+    if parsed:
+        group_name, clash_type, url, no_resolve = parsed
+        if group_name not in ruleset_groups:
+            ruleset_groups[group_name] = []
+        ruleset_groups[group_name].append((clash_type, url, no_resolve))
+    else:
+        regular_links.append(line)
+
+# 处理普通链接
+for link in regular_links:
     result_file_name = parse_list_file(link, output_directory=output_dir)
-    # result_file_names.append(result_file_name)
+
+# 处理 ruleset 分组（合并同名组为一个文件）
+for group_name, entries in ruleset_groups.items():
+    print(f"Processing ruleset group: {group_name} ({len(entries)} sources)")
+    parse_ruleset_group(group_name, entries, output_dir)
 
 # 根据json文件生成srs文件
 generate_srs_by_json()
-# 打印生成的文件名
-# for file_name in result_file_names:
-    # print(file_name)
