@@ -6,6 +6,8 @@ import json
 import requests
 import yaml
 import ipaddress
+import subprocess
+import shutil
 
 # 映射字典
 MAP_DICT = {'DOMAIN-SUFFIX': 'domain_suffix', 'HOST-SUFFIX': 'domain_suffix', 'DOMAIN': 'domain', 'HOST': 'domain', 'host': 'domain',
@@ -171,6 +173,101 @@ def parse_list_file(link, output_directory):
         print(f'获取链接出错，已跳过：{link}')
         pass
 
+def json_to_mrs_list(json_path):
+    """从 sing-box JSON 规则文件中提取域名规则，生成 mihomo 兼容的 .list 内容"""
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    lines = []
+    for rule in data.get('rules', []):
+        for key, values in rule.items():
+            if key == 'domain':
+                for v in values:
+                    lines.append(v)
+            elif key == 'domain_suffix':
+                for v in values:
+                    lines.append(f'+.{v}')
+            # 跳过 domain_keyword, ip_cidr, domain_regex 因为 mihomo 的 domain behavior 不支持它们
+            # 且 classical behavior 存在崩溃 bug
+    return lines
+
+
+def detect_mrs_behavior(lines):
+    """检测规则列表的行为类型: 偏向 domain 还是 ipcidr"""
+    has_domain = False
+    has_ip = False
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if '/' in line and any(c.isdigit() for c in line):  # IP CIDR
+            has_ip = True
+        else:
+            has_domain = True
+            
+    if has_ip and not has_domain:
+        return 'ipcidr'
+    return 'domain'
+
+
+def generate_mrs_from_json(json_path, mrs_dir="./mrs"):
+    """从 sing-box JSON 规则文件生成 mihomo .mrs 文件，输出到 mrs_dir"""
+    if not shutil.which('mihomo'):
+        return
+    name = os.path.splitext(os.path.basename(json_path))[0]
+    mrs_path = os.path.join(mrs_dir, f"{name}.mrs")
+    try:
+        lines = json_to_mrs_list(json_path)
+        if not lines:
+            return
+        # 写入临时 .list 文件到 /tmp/
+        tmp_list = f"/tmp/{name}.tmp.list"
+        with open(tmp_list, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+        # 检测行为类型
+        behavior = detect_mrs_behavior(lines)
+        result = subprocess.run(
+            ['mihomo', 'convert-ruleset', behavior, 'text', tmp_list, mrs_path],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print(f"Generated {mrs_path} (behavior={behavior})")
+        else:
+            print(f"Error generating {mrs_path}: {result.stderr}")
+        # 清理临时文件
+        os.remove(tmp_list)
+    except Exception as e:
+        print(f"Error generating mrs for {json_path}: {e}")
+
+
+def generate_mrs_from_list(list_path, output_dir):
+    """从 .list 文件直接生成 mihomo .mrs 文件"""
+    if not shutil.which('mihomo'):
+        print("mihomo not found, skipping .mrs generation")
+        return
+    try:
+        name = os.path.splitext(os.path.basename(list_path))[0]
+        mrs_path = os.path.join(output_dir, f"{name}.mrs")
+        # 读取 list 文件确定行为类型
+        with open(list_path, 'r', encoding='utf-8') as f:
+            lines = [l.strip() for l in f.readlines() if l.strip() and not l.strip().startswith('#')]
+        behavior = detect_mrs_behavior(lines)
+        # 写入去除注释的临时文件
+        tmp_list = os.path.join(output_dir, f"{name}.tmp.list")
+        with open(tmp_list, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+        result = subprocess.run(
+            ['mihomo', 'convert-ruleset', behavior, 'text', tmp_list, mrs_path],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print(f"Generated {mrs_path} (behavior={behavior})")
+        else:
+            print(f"Error generating {mrs_path}: {result.stderr}")
+        os.remove(tmp_list)
+    except Exception as e:
+        print(f"Error generating mrs from {list_path}: {e}")
+
+
 def generate_srs_by_json():
     # 获取rule目录下所有的json文件
     json_files = [f for f in os.listdir("./rule") if f.endswith('.json')]
@@ -187,6 +284,11 @@ def generate_srs_by_json():
                 print(f"Generated {srs_path}")
             except Exception as e:
                 print(f"Error generating {srs_path}: {str(e)}")
+        
+        # 同时生成 .mrs 文件（输出到 ./mrs/）
+        mrs_path = os.path.join("./mrs", json_file.replace(".json", ".mrs"))
+        if not os.path.exists(mrs_path):
+            generate_mrs_from_json(json_path, mrs_dir="./mrs")
 
 
 def parse_ruleset_line(line):
@@ -325,6 +427,8 @@ def parse_ruleset_group(group_name, entries, output_directory):
         # 编译为 .srs
         srs_path = file_name.replace(".json", ".srs")
         os.system(f"sing-box rule-set compile --output {srs_path} {file_name}")
+        # 编译为 .mrs（输出到 ./mrs/）
+        generate_mrs_from_json(file_name, mrs_dir="./mrs")
         print(f"Generated {file_name} and {srs_path}")
         return file_name
     except Exception as e:
@@ -338,8 +442,14 @@ with open(os.path.basename("links.txt"), 'r') as links_file:
 
 links = [l for l in links if l.strip() and not l.strip().startswith("#")]
 
-output_dir = "./rule"
-result_file_names = []
+# 目录配置
+output_dir = "./rule"     # .json + .srs
+mrs_dir   = "./mrs"      # .mrs
+list_dir  = "./list"     # .list 源文件
+
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(mrs_dir, exist_ok=True)
+os.makedirs(list_dir, exist_ok=True)
 
 # 分离普通链接和 ruleset= 格式的行
 regular_links = []
@@ -364,5 +474,12 @@ for group_name, entries in ruleset_groups.items():
     print(f"Processing ruleset group: {group_name} ({len(entries)} sources)")
     parse_ruleset_group(group_name, entries, output_dir)
 
-# 根据json文件生成srs文件
+# 处理 list/ 目录中的 .list 文件 → 生成 .mrs 到 mrs/
+list_files = [f for f in os.listdir(list_dir) if f.endswith('.list')]
+for list_file in list_files:
+    full_path = os.path.join(list_dir, list_file)
+    print(f"Processing list file: {full_path}")
+    generate_mrs_from_list(full_path, mrs_dir)
+
+# 根据 rule/ 下的 json 文件生成 srs（rule/）以及 mrs（mrs/）
 generate_srs_by_json()

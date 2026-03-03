@@ -1,0 +1,30 @@
+# Wallet & Fintech Banks - Combined Domain Rule List
+
+# 1. WISE (Formerly TransferWise)
++.wise.com
++.transferwise.com
++.transferwise.net
++.wisecdn.com
+
+# 2. Interactive Brokers (IBKR)
++.interactivebrokers.com
++.interactivebrokers.co.uk
++.interactivebrokers.hk
++.interactivebrokers.com.cn
++.ibkr.com
++.ibkr.com.cn
++.ibroker.com
+
+# 3. iFAST Global Bank
++.ifastgb.com
++.ifastnetwork.com
++.ifastfinancial.com
++.ifastglobalbank.com
+
+# 4. N26
++.n26.com
++.number26.de
++.n26.io
+
+# 5. Fiat24
++.fiat24.com

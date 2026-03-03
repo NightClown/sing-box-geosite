@@ -1,0 +1,133 @@
+# Top Crypto Exchanges - Combined Domain Rule List
+# Merged from metacubex/meta-rules-dat + manually curated
+
+# 1. Binance
++.binance.cc
++.binance.charity
++.binance.cloud
++.binance.co
++.binance.com
++.binance.info
++.binance.me
++.binance.net
++.binance.org
++.binance.us
++.binance.vision
++.binancecnt.com
++.binancezh.be
++.binancezh.biz
++.binancezh.cc
++.binancezh.co
++.binancezh.com
++.binancezh.info
++.binancezh.ink
++.binancezh.kim
++.binancezh.link
++.binancezh.live
++.binancezh.mobi
++.binancezh.net
++.binancezh.pro
++.binancezh.sh
++.binancezh.top
++.binanceapi.com
++.binanceru.net
++.bnbstatic.com
++.bntrace.com
++.bsappapi.com
++.nftstatic.com
++.appsflayer.com
++.saasexch.cc
++.saasexch.co
++.saasexch.com
++.saasexch.io
+
+# 2. OKX
++.okex.com
++.okx-dns.com
++.okx-dns1.com
++.okx-dns2.com
++.okx.cab
++.okx.com
++.oklink.com
+
+# 3. Bybit
+bybit-exchange.github.io
+bybit.ada.support
++.bybit.com
++.bycsi.com
++.bytick.com
++.byapis.com
++.bycbe.com
++.bymj.io
++.byabcde.com
++.byapps.net
++.byd3c3.com
++.bybit.biz
++.bybdc6.com
++.bybit-global.com
++.bybit.cloud
++.bybitglobal.com
+
+# 4. Coinbase
++.coinbase.com
++.coinbase-brokerage.com
++.pro.coinbase.com
++.custody.coinbase.com
+
+# 5. Kraken
++.kraken.com
++.kraken.onl
+
+# 6. KuCoin
++.kucoin.com
++.kucoin.plus
+
+# 7. HTX (Huobi)
++.htx.com
++.hbabit.com
++.hbfile.net
++.huobi.com
++.huobi.me
++.huobi.pro
++.huobi.sc
++.huobiasia.vip
++.huobigroup.com
++.huobitoken.com
+
+# 8. Gate.io
++.gate.io
++.gate.com
++.gateio.life
++.gatedata.org
++.gatetool.org
++.gateimg.com
+
+# 9. Bitget
++.bitget.com
++.bitget.site
++.bitgetapp.com
++.bgcdn.net
+
+# 10. MEXC
++.mexc.com
++.mexc.co
++.mexc.fm
++.mexc.io
++.mexc.cc
++.mexcglobal.com
+
+# 11. Bitfinex
++.bitfinex.com
++.bfx.com
+
+# 12. Hyperliquid
++.hyperliquid.xyz
++.hyperliquid-dex.com
+
+# 13. Crypto.com
++.crypto.com
++.cryptocom.com
+
+# 14. Gemini
++.gemini.com
++.geminispace.com
