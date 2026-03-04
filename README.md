@@ -47,7 +47,7 @@ brew install sing-box             # For .srs compilation
 brew install mihomo               # For .mrs compilation
 ```
 
-#### Run locally
+#### Run locally (Auto-Convert All)
 
 ```bash
 python3 main.py
@@ -56,6 +56,21 @@ python3 main.py
 Output files appear in:
 - `rule/` → `*.json` (sing-box source format) + `*.srs` (compiled binary)
 - `mrs/`  → `*.mrs` (Mihomo compiled binary)
+
+#### Manual Conversion Commands
+
+If you ever need to manually convert files, you can use the CLI commands directly:
+
+**Compile sing-box (`.json` → `.srs`)**
+```bash
+sing-box rule-set compile --output rule/custom.srs rule/custom.json
+```
+
+**Compile Mihomo (`.list` → `.mrs`)**
+```bash
+mihomo convert-ruleset domain text list/custom.list mrs/custom.mrs
+```
+*(Available behaviors: `domain`, `ipcidr`, `classical`)*
 
 ### ✏️ Adding Rules
 
@@ -205,7 +220,7 @@ brew install sing-box             # 用于编译 .srs
 brew install mihomo               # 用于编译 .mrs
 ```
 
-#### 本地运行
+#### 本地运行（一键转换全部）
 
 ```bash
 python3 main.py
@@ -214,6 +229,21 @@ python3 main.py
 生成文件位置：
 - `rule/` → `*.json`（sing-box 源格式）+ `*.srs`（编译二进制）
 - `mrs/` → `*.mrs`（Mihomo 编译二进制）
+
+#### 手动转换命令
+
+如果需要手动对单个文件进行转换，可以直接使用以下 CLI 命令：
+
+**编译 sing-box（`.json` → `.srs`）**
+```bash
+sing-box rule-set compile --output rule/custom.srs rule/custom.json
+```
+
+**编译 Mihomo（`.list` → `.mrs`）**
+```bash
+mihomo convert-ruleset domain text list/custom.list mrs/custom.mrs
+```
+*（可选行为/behavior：`domain`、`ipcidr`、`classical`）*
 
 ### ✏️ 添加规则
 
